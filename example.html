@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<style>
+  body {
+    background-color: #4a4c63;
+    font-family: Arial;
+  }
+
+  .figure {
+    margin-left: 45px;
+    display: inline-block;
+  }
+
+  .title {
+    font-size: 26px;
+    color: white;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .y-axis-label {
+    transform: translateX(-50%) rotate(-90deg);
+    position: absolute;
+    text-align: center;
+    padding-right: 15px;
+    padding-left: 10px;
+    color: white;
+    font-size: 20px;
+    top: 50%;
+    left: -25px;
+  }
+
+  svg {
+    width: 640px;
+    height: 373px;
+    background-color: #ece6ea;
+
+    /* Subtly draw attention to the figure with a border */
+    border: 4px solid #f947ae;
+    border-radius: 24px;
+  }
+
+  svg .axis {
+    stroke: #000;
+    stroke-width: 1px;
+  }
+
+  svg .tick {
+    stroke: #000;
+    stroke-width: 1px;
+  }
+
+  svg .tick-label {
+    font-size: 14px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="figure">
+  <div class="title">KEY TRENDS AND FIGURES <br> IN MACHINE LEARNING</div>
+  <div style="position: relative">
+    <span class="y-axis-label">Training compute (FLOP)</span>
+    <svg id="chart"></svg>
+  </div>
+</div>
+
+<script>
+  // Crappy code ahead
+
+  function drawFigure() {
+    let svg = document.getElementById('chart');
+
+    let dataAreaBounds = {
+      'x0': 70,
+      'y0': 20,
+      'x1': 615,
+      'y1': 345,
+    };
+
+    let xScale = new Scale([2014, 2024], [dataAreaBounds.x0, dataAreaBounds.x1]);
+    let yScale = new Scale([1, Math.pow(10, 25)], [dataAreaBounds.y1, dataAreaBounds.y0], true);
+
+    drawXAxis(svg, dataAreaBounds, xScale);
+    drawYAxis(svg, dataAreaBounds, yScale);
+
+    // Line of best fit
+    // Fitted by David
+    let linePoints = [];
+    for (let x = 2014; x <= 2023.5; x += 0.01) {
+      linePoints.push({x: x, y: 4e19 * 10**(0.6 * (x - 2014))});
+    }
+    drawLine(svg, linePoints, xScale, yScale);
+
+    // Plot some random points for visual flair
+    let scatterPoints = [
+      // Your scatter points here
+    ];
+    drawScatter(svg, scatterPoints, xScale, yScale);
+  }
+
+  class Scale {
+    constructor(domain, range, isLogScale=false) {
+      this.domain = domain;
+      this.range = range;
+      this.isLogScale = isLogScale;
+    }
+
+    apply(x) {
+      if (this.isLogScale) {
+        return this.range[1] - (Math.log10(x) - Math.log10(this.domain[0])) / (Math.log10(this.domain[1]) - Math.log10(this.domain[0])) * (this.range[1] - this.range[0]);
+      } else {
+        return this.range[0] + (x - this.domain[0]) / (this.domain[1] - this.domain[0]) * (this.range[1] - this.range[0]);
+      }
+    }
+
+    invert(y) {
+      if (this.isLogScale) {
+        let logY = this.range[1] - y + this.range[0];
+        return Math.pow(10, logY);
+      } else {
+        return this.domain[0] + (y - this.range[0]) / (this.range[1] - this.range[0]) * (this.domain[1] - this.domain[0]);
+      }
+    }
+  }
+
+  function createSvgElement(tag, attrs, props={}) {
+    let elem = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (let key in attrs) {
+      elem.setAttribute(key, attrs[key]);
+    }
+    for (let key in props) {
+      elem[key] = props[key];
+    }
+    return elem;
+  }
+
+  function drawXAxis(svg, dataAreaBounds, xScale) {
+    // Draw axis line
+    let line = createSvgElement('line', {
+      'x1': dataAreaBounds.x0,
+      'y1': dataAreaBounds.y1,
+      'x2': dataAreaBounds.x1,
+      'y2': dataAreaBounds.y1,
+      'class': 'axis',
+    });
+    svg.appendChild(line);
+
+    // Draw tick marks and labels
+    for (let x = xScale.domain[0]; x <= xScale.domain[1]; x += 2) {
+      let xPixel = xScale.apply(x);
+      // Draw tick mark
+      let tick = createSvgElement('line', {
+        'x1': xPixel,
+        'y1': dataAreaBounds.y1,
+        'x2': xPixel,
+        'y2': dataAreaBounds.y1 + 5,
+        'class': 'tick',
+      });
+      svg.appendChild(tick);
+      // Draw tick label
+      let tickLabel = createSvgElement('text', {
+        'x': xPixel,
+        'y': dataAreaBounds.y1 + 20,
+        'class': 'tick-label',
+        'text-anchor': 'middle',
+      });
+      tickLabel.textContent = x;
+      svg.appendChild(tickLabel);
+    }
+  }
+
+  function drawYAxis(svg, dataAreaBounds, yScale) {
+    // Draw axis line
+    let line = createSvgElement('line', {
+      'x1': dataAreaBounds.x0,
+      'y1': dataAreaBounds.y0,
+      'x2': dataAreaBounds.x0,
+      'y2': dataAreaBounds.y1,
+      'class': 'axis',
+    });
+    svg.appendChild(line);
+
+    // Draw tick marks and labels
+    for (let i = 1; i <= 25; i++) {
+      let y = Math.pow(10, i - 1);
+      let yPixel = yScale.apply(y);
+      // Draw tick mark
+      let tick = createSvgElement('line', {
+        'x1': dataAreaBounds.x0,
+        'y1': yPixel,
+        'x2': dataAreaBounds.x0 - 5,
+        'y2': yPixel,
+        'class': 'tick',
+      });
+      svg.appendChild(tick);
+      // Draw tick label
+      let tickLabel = createSvgElement('text', {
+        'x': dataAreaBounds.x0 - 10,
+        'y': yPixel + 5,
+        'class': 'tick-label',
+        'text-anchor': 'end',
+      });
+      tickLabel.textContent = y.toExponential(1);
+      svg.appendChild(tickLabel);
+    }
+  }
+
+  function drawLine(svg, points, xScale, yScale) {
+    let path = 'M ';
+    points.forEach((point) => {
+      let x = xScale.apply(point.x);
+      let y = yScale.apply(point.y);
+      path += `${x} ${y} `;
+    });
+
+    let line = createSvgElement('path', {
+      'd': path,
+      'class': 'line',
+    });
+    svg.appendChild(line);
+  }
+
+  function drawScatter(svg, points, xScale, yScale) {
+    points.forEach((point) => {
+      let x = xScale.apply(point.x);
+      let y = yScale.apply(point.y);
+      let circle = createSvgElement('circle', {
+        'cx': x,
+        'cy': y,
+        'r': 3,
+        'fill': 'white',
+      });
+      svg.appendChild(circle);
+    });
+  }
+
+  drawFigure();
+</script>
+
+</body>
+
+</html>
